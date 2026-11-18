@@ -2965,6 +2965,15 @@
   gap: 12px;
   padding: 16px 18px 18px;
 }
+.ohf-keys-input-row {
+  display: flex;
+  gap: 6px;
+}
+.ohf-keys-reveal {
+  flex-shrink: 0;
+  height: auto;
+  border: 1px solid var(--line);
+}
 .ohf-keys-actions {
   display: flex;
   align-items: center;
@@ -3705,6 +3714,28 @@ a.ohf-btn-solid {
   }
   .ohf-selact-label {
     display: none;
+  }
+}
+
+/* Touch screens. iOS Safari zooms the whole page into any field set under
+   16px the moment it is tapped, and leaves it zoomed; at 16px it does not.
+   The batch steps grow from a cursor's target to a thumb's. */
+@media (pointer: coarse) {
+  .ohf-input,
+  .ohf-prompt {
+    font-size: 16px;
+  }
+  .ohf-batch-step {
+    width: 36px;
+    height: 36px;
+  }
+  .ohf-keys-save,
+  .ohf-keys-reveal,
+  .ohf-keys-actions .ohf-btn-quiet {
+    min-height: 44px;
+  }
+  .ohf-keys-panel .ohf-input {
+    min-height: 44px;
   }
 }
 

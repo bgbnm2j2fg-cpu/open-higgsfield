@@ -2,6 +2,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { PLATFORM_KEY_COOKIE, decodeCredentials } from "@/generation/credentials";
 import {
   DEVICE_COOKIE,
   DEVICE_COOKIE_OPTIONS,
@@ -9,10 +10,16 @@ import {
   resolveDeviceId,
 } from "@/generation/device";
 
-// Anyone who can hit this route can upload. Gate it when auth exists.
+// Upload tokens are only handed to a browser that holds a platform key, so a
+// stranger who finds a deployment cannot fill its Blob store. The completion
+// callback comes from Vercel itself, carries no cookie, and is verified by
+// handleUpload's signature check instead.
 
 export async function POST(request: Request): Promise<NextResponse> {
   const incoming = (await request.json()) as HandleUploadBody;
+  if (incoming.type === "blob.generate-client-token" && !(await hasPlatformKey())) {
+    return NextResponse.json({ error: "Save your API key before uploading" }, { status: 401 });
+  }
   const device =
     incoming.type === "blob.generate-client-token" ? await readDeviceId() : null;
   const body = device ? withDevicePath(incoming, device.deviceId) : incoming;
@@ -52,6 +59,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (device?.minted) return withDeviceCookie(new NextResponse(null, { status: 500 }), device);
     throw error;
   }
+}
+
+async function hasPlatformKey() {
+  const jar = await cookies();
+  return decodeCredentials(jar.get(PLATFORM_KEY_COOKIE)?.value) !== null;
 }
 
 async function readDeviceId() {

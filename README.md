@@ -117,6 +117,19 @@ HF_API_BASE_URL=                      # generation API origin, server only
 OPEN_HIGGSFIELD_READ_WRITE_TOKEN=     # Vercel Blob read-write token
 ```
 
+### Deploy your own copy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbgbnm2j2fg-cpu%2Fopen-higgsfield&env=HF_API_BASE_URL&envDescription=Origin%20of%20the%20generation%20API%2C%20server%20only)
+
+1. Press **Deploy with Vercel**, sign in, and create the project. Enter the
+   generation API origin for `HF_API_BASE_URL` when asked.
+2. In the new project, open **Storage → Create → Blob** and connect it with the
+   environment variable prefix `OPEN_HIGGSFIELD`, which gives the app its
+   `OPEN_HIGGSFIELD_READ_WRITE_TOKEN`. Redeploy once it is connected.
+3. Open the site and add your platform key. Uploads are only allowed from a
+   browser that has saved a key, so strangers who find the URL cannot fill
+   your Blob store.
+
 ### Commands
 
 | Command | What it does |

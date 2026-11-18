@@ -20,6 +20,7 @@ export function KeyModal({
   const ref = useRef<HTMLDialogElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [apiKey, setApiKey] = useState("");
+  const [revealed, setRevealed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,12 +70,12 @@ export function KeyModal({
         <div className="ohf-keys-head">
           <div>
             <div id="ohf-keys-title" className="ohf-keys-title">
-              API key
+              {configured ? "Your API key" : "Add your API key to start"}
             </div>
             <p className="ohf-keys-copy">
               {configured
-                ? "A key is saved in this browser. Enter a new id:secret pair to replace it."
-                : "Paste your platform key as id:secret. It stays in an httpOnly cookie and is sent as Authorization: Key id:secret."}
+                ? "A key is saved in this browser. Paste a new one to replace it."
+                : "The studio is free; each image or video is generated with your own platform key, which looks like id:secret. It is kept in a secure cookie on this device and only sent to the generation platform."}
             </p>
           </div>
           <button type="button" className="ohf-icon-btn" aria-label="Close" onClick={onClose}>
@@ -85,15 +86,29 @@ export function KeyModal({
         <form className="ohf-keys-form" onSubmit={(event) => void onSubmit(event)}>
           <label className="ohf-field">
             <div className="ohf-field-label">API key</div>
-            <input
-              className="ohf-input ohf-input--mono"
-              name="api_key"
-              type="password"
-              autoComplete="off"
-              spellCheck={false}
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
-            />
+            <div className="ohf-keys-input-row">
+              <input
+                className="ohf-input ohf-input--mono"
+                name="api_key"
+                type={revealed ? "text" : "password"}
+                placeholder="id:secret"
+                autoComplete="off"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="done"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+              />
+              <button
+                type="button"
+                className="ohf-btn-quiet ohf-keys-reveal"
+                aria-pressed={revealed}
+                onClick={() => setRevealed((value) => !value)}
+              >
+                {revealed ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
 
           {error && (
