@@ -22,7 +22,7 @@ export const useActive = create<ActiveState>()(
   persist(
     (set) => ({
       surface: "video",
-      model: "seedance-2.5",
+      model: "free-ltx-video",
       batch: 1,
       setModel: (id) => {
         const model = getModel(id);
@@ -39,7 +39,7 @@ export const useActive = create<ActiveState>()(
         }),
     }),
     {
-      name: "openhiggsfield.active.v2",
+      name: "openhiggsfield.active.v3",
       storage: browserStorage(),
       partialize: (state) => ({ surface: state.surface, model: state.model, batch: state.batch }),
       onRehydrateStorage: () => (state) => {
@@ -47,7 +47,7 @@ export const useActive = create<ActiveState>()(
         try {
           getModel(state.model);
         } catch {
-          state.setModel("seedance-2.5");
+          state.setModel("free-ltx-video");
         }
       },
     },

@@ -5,13 +5,16 @@ import { cookies } from "next/headers";
 import { getModel, parseSettings } from "./catalog";
 import type { GenerationPlane } from "./catalog/types";
 import {
+  HF_TOKEN_COOKIE,
   MissingCredentialsError,
   PLATFORM_KEY_COOKIE,
   PLATFORM_KEY_COOKIE_OPTIONS,
   decodeCredentials,
   encodeCredentials,
+  isHfToken,
   parseCredentialInput,
 } from "./credentials";
+import { isFreeModel, isFreeResult, readFreeResult, runFreeModel } from "./free-models";
 import { PlatformError, createPlatformClient } from "./platform";
 import type { QueuedGeneration, StatusResult } from "./platform";
 import { toPlatform } from "./to-platform";
@@ -19,16 +22,29 @@ import { toPlatform } from "./to-platform";
 export async function savePlatformCredentials(data: unknown) {
   const { apiKey } = parseCredentialInput(data);
   const jar = await cookies();
+  /* The free token and the paid key live side by side: saving one never
+     drops the other. */
+  if (isHfToken(apiKey)) {
+    jar.set(HF_TOKEN_COOKIE, apiKey, PLATFORM_KEY_COOKIE_OPTIONS);
+    return;
+  }
   jar.set(PLATFORM_KEY_COOKIE, encodeCredentials(apiKey), PLATFORM_KEY_COOKIE_OPTIONS);
 }
 
 export async function clearPlatformCredentials() {
   const jar = await cookies();
   jar.set(PLATFORM_KEY_COOKIE, "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
+  jar.set(HF_TOKEN_COOKIE, "", { ...PLATFORM_KEY_COOKIE_OPTIONS, maxAge: 0 });
 }
 
 export async function hasPlatformCredentials() {
-  return (await readStoredCredentials()) !== null;
+  return (await readStoredCredentials()) !== null || (await readHfToken()) !== null;
+}
+
+async function readHfToken(): Promise<string | null> {
+  const jar = await cookies();
+  const token = jar.get(HF_TOKEN_COOKIE)?.value ?? "";
+  return isHfToken(token) ? token : null;
 }
 
 export type SubmitResult =
@@ -41,6 +57,21 @@ export type SubmitResult =
 export async function submitGeneration(plane: GenerationPlane): Promise<SubmitResult> {
   try {
     const model = getModel(plane.model);
+    if (isFreeModel(model.id)) {
+      const token = await readHfToken();
+      if (!token) {
+        return {
+          ok: false,
+          error: "Free models need your free Hugging Face token (starts with hf_)",
+          missingKey: true,
+        };
+      }
+      const requestId = await runFreeModel(
+        { ...plane, settings: parseSettings(model, plane.settings) },
+        token,
+      );
+      return { ok: true, queued: { status: "completed", requestId, statusUrl: "", cancelUrl: "" } };
+    }
     const parsed: GenerationPlane = {
       ...plane,
       settings: parseSettings(model, plane.settings),
@@ -84,15 +115,21 @@ function explainFailure(caught: unknown): string {
     next submit — the fan-out belongs on this side of the call, where it is
     genuinely parallel. */
 export async function getGenerationStatuses(data: unknown): Promise<StatusResult[]> {
-  const requestIds = parseRequestIds(data);
+  const allIds = parseRequestIds(data);
+  /* A free run finished before its id was handed out: the id carries it. */
+  const free: StatusResult[] = allIds
+    .filter(isFreeResult)
+    .map((requestId) => ({ requestId, status: readFreeResult(requestId) }));
+  const requestIds = allIds.filter((requestId) => !isFreeResult(requestId));
+  if (requestIds.length === 0) return free;
   let client: ReturnType<typeof createPlatformClient>;
   try {
     client = createPlatformClient(await readCredentials());
   } catch (caught) {
     const error = explainFailure(caught);
-    return requestIds.map((requestId) => ({ requestId, error }));
+    return [...free, ...requestIds.map((requestId) => ({ requestId, error }))];
   }
-  return Promise.all(
+  const paid = await Promise.all(
     requestIds.map(async (requestId): Promise<StatusResult> => {
       try {
         return { requestId, status: await client.status(requestId) };
@@ -101,6 +138,7 @@ export async function getGenerationStatuses(data: unknown): Promise<StatusResult
       }
     }),
   );
+  return [...free, ...paid];
 }
 
 async function readStoredCredentials() {

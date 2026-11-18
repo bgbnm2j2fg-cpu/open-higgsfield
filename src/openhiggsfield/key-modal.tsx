@@ -70,12 +70,12 @@ export function KeyModal({
         <div className="ohf-keys-head">
           <div>
             <div id="ohf-keys-title" className="ohf-keys-title">
-              {configured ? "Your API key" : "Add your API key to start"}
+              {configured ? "Your keys" : "Add your free key to start"}
             </div>
             <p className="ohf-keys-copy">
               {configured
-                ? "A key is saved in this browser. Paste a new one to replace it."
-                : "The studio is free; each image or video is generated with your own platform key, which looks like id:secret. It is kept in a secure cookie on this device and only sent to the generation platform."}
+                ? "A key is saved in this browser. Paste another to add or replace it."
+                : "Free models (marked · Free) run on your own free Hugging Face token, which starts with hf_. Get one at huggingface.co → Settings → Access Tokens. Paid models use a Higgsfield key (id:secret). Keys stay in a secure cookie on this device."}
             </p>
           </div>
           <button type="button" className="ohf-icon-btn" aria-label="Close" onClick={onClose}>
@@ -91,7 +91,7 @@ export function KeyModal({
                 className="ohf-input ohf-input--mono"
                 name="api_key"
                 type={revealed ? "text" : "password"}
-                placeholder="id:secret"
+                placeholder="hf_… or id:secret"
                 autoComplete="off"
                 autoCapitalize="off"
                 autoCorrect="off"

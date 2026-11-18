@@ -1,5 +1,6 @@
 import { dop } from "./dop";
 import { flux2 } from "./flux-2";
+import { freeFluxSchnell, freeLtxVideo } from "./free";
 import { flux3 } from "./flux-3";
 import { grokImagine2 } from "./grok-imagine-2";
 import { grokImagineVideo15 } from "./grok-imagine-video-1.5";
@@ -37,6 +38,8 @@ import { wan3Prime } from "./wan-3-prime";
 import { zImageTurbo } from "./z-image-turbo";
 
 export const MODELS: readonly ModelEntry[] = [
+  freeLtxVideo,
+  freeFluxSchnell,
   soul2,
   soulCinema,
   seedance25,

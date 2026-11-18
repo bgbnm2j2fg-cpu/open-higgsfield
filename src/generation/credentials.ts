@@ -1,4 +1,10 @@
 export const PLATFORM_KEY_COOKIE = "api_key";
+export const HF_TOKEN_COOKIE = "hf_token";
+
+/** A Hugging Face access token, for the free models. */
+export function isHfToken(value: string): boolean {
+  return /^hf_[A-Za-z0-9]{20,}$/.test(value.trim());
+}
 
 export const PLATFORM_KEY_COOKIE_OPTIONS = {
   httpOnly: true,
@@ -39,6 +45,10 @@ export function parseCredentialInput(data: unknown): { apiKey: string } {
   const record = data as { apiKey?: unknown; api_key?: unknown };
   const apiKey = record.apiKey ?? record.api_key;
   if (typeof apiKey !== "string" || !apiKey.trim()) throw new Error("Enter an API key");
+  if (isHfToken(apiKey)) return { apiKey: apiKey.trim() };
+  if (apiKey.trim().startsWith("hf_")) {
+    throw new Error("That Hugging Face token looks incomplete — copy the whole hf_… token");
+  }
   return { apiKey: requireIdAndSecret(apiKey.trim()) };
 }
 
@@ -49,7 +59,7 @@ export function toAuthorizationHeader(apiKey: string): string {
 function requireIdAndSecret(apiKey: string): string {
   const colon = apiKey.indexOf(":");
   if (colon <= 0 || colon === apiKey.length - 1) {
-    throw new Error("API key must be id:secret");
+    throw new Error("Paste a free Hugging Face token (hf_…) or a Higgsfield key (id:secret)");
   }
   return apiKey;
 }

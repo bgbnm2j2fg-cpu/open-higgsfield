@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
 
+/* Free models answer within the request that submits them; a short video can
+   take a minute or more on a shared GPU. */
+export const maxDuration = 300;
+
 export default function OpenHiggsfieldPage() {
   return <OpenHiggsfieldApp fontClassName={inter.variable} />;
 }

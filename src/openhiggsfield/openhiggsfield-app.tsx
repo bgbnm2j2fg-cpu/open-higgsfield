@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { hasPlatformCredentials, submitGeneration } from "@/generation/actions";
+import { isFreeModel } from "@/generation/catalog/free";
 import { MissingCredentialsError } from "@/generation/credentials";
 import { MODELS, getModel } from "@/generation/catalog";
 import type { Surface } from "@/generation/catalog";
@@ -154,7 +155,8 @@ function describeError(caught: unknown): string {
   if (caught instanceof MissingCredentialsError || message.includes("Missing platform key")) {
     return "Add your platform key to generate.";
   }
-  return `Generation failed — ${message}. Try again; if it repeats, check the key in the sidebar.`;
+  if (message.startsWith("Free models need")) return `${message}.`;
+  return `Generation failed — ${message}. Try again; if it repeats, check your key (top right).`;
 }
 
 export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: string }) {
@@ -326,7 +328,11 @@ export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: stri
   const generate = useCallback(async () => {
     if (!keyConfigured) {
       setKeysOpen(true);
-      setError("Add your platform key to generate.");
+      setError(
+        isFreeModel(useActive.getState().model)
+          ? "Add your free Hugging Face token (hf_…) to generate."
+          : "Add your platform key to generate.",
+      );
       return;
     }
     const plane = assemblePlane();
@@ -381,7 +387,11 @@ export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: stri
       try {
         const submitted = await submitGeneration(plane);
         if (!submitted.ok) {
-          throw submitted.missingKey ? new MissingCredentialsError() : new Error(submitted.error);
+          if (submitted.missingKey) {
+            setKeysOpen(true);
+            throw new Error(submitted.error);
+          }
+          throw new Error(submitted.error);
         }
         const queued = submitted.queued;
         setHistory((prev) => {

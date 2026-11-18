@@ -2,7 +2,12 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { PLATFORM_KEY_COOKIE, decodeCredentials } from "@/generation/credentials";
+import {
+  HF_TOKEN_COOKIE,
+  PLATFORM_KEY_COOKIE,
+  decodeCredentials,
+  isHfToken,
+} from "@/generation/credentials";
 import {
   DEVICE_COOKIE,
   DEVICE_COOKIE_OPTIONS,
@@ -63,7 +68,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 async function hasPlatformKey() {
   const jar = await cookies();
-  return decodeCredentials(jar.get(PLATFORM_KEY_COOKIE)?.value) !== null;
+  return (
+    decodeCredentials(jar.get(PLATFORM_KEY_COOKIE)?.value) !== null ||
+    isHfToken(jar.get(HF_TOKEN_COOKIE)?.value ?? "")
+  );
 }
 
 async function readDeviceId() {
