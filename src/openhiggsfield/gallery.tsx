@@ -514,6 +514,7 @@ function Empty({
   return (
     <div className="ohf-empty">
       <div className="ohf-empty-copy">
+        <div className="ohf-empty-brand">Happy Oil Studio</div>
         <h2 className="ohf-empty-title">{EMPTY[view].title}</h2>
         <p className="ohf-empty-hint">{EMPTY[view].hint}</p>
 

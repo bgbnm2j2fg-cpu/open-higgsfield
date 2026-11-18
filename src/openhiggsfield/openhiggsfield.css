@@ -2965,6 +2965,14 @@
   gap: 12px;
   padding: 16px 18px 18px;
 }
+.ohf-empty-brand {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 .ohf-keys-input-row {
   display: flex;
   gap: 6px;

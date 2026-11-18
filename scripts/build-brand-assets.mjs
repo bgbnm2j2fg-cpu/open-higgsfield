@@ -167,10 +167,10 @@ const og = `<!doctype html><meta charset="utf-8">
 <div class="field">${markSvg(454, { stroke: 1.15, accent: "rgba(111,227,192,0.17)", ink: "rgba(255,255,255,0.085)" })}</div>
 <div class="band mark">${markSvg(58, { stroke: 2.5 })}</div>
 <div class="mid"><div class="band">
-  <h1>OpenHiggsfield AI</h1>
-  <div class="descriptor">Open source AI studio</div>
+  <h1>Happy Oil</h1>
+  <div class="descriptor">Free AI video &amp; image studio</div>
   <div class="rule"></div>
-  <p>One prompt bar for image and video. Each model&rsquo;s own settings, and every finished run in one gallery.</p>
+  <p>Describe a shot, get a video or an image, and keep every finished run in one gallery.</p>
 </div></div>
 <div class="grain"></div>`;
 

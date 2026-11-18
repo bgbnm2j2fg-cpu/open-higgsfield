@@ -37,7 +37,12 @@ import { wan3 } from "./wan-3";
 import { wan3Prime } from "./wan-3-prime";
 import { zImageTurbo } from "./z-image-turbo";
 
-export const MODELS: readonly ModelEntry[] = [
+/* Happy Oil runs free by default: only the Hugging Face models are offered.
+   Set NEXT_PUBLIC_SHOW_PAID_MODELS=1 on the deployment to list the paid
+   Higgsfield catalog beside them. */
+const SHOW_PAID = process.env.NEXT_PUBLIC_SHOW_PAID_MODELS === "1";
+
+const ALL_MODELS: readonly ModelEntry[] = [
   freeLtxVideo,
   freeFluxSchnell,
   soul2,
@@ -79,6 +84,10 @@ export const MODELS: readonly ModelEntry[] = [
   pixverse6,
   dop,
 ];
+
+export const MODELS: readonly ModelEntry[] = SHOW_PAID
+  ? ALL_MODELS
+  : ALL_MODELS.filter((entry) => entry.id.startsWith("free-"));
 
 export function getModel(id: string): ModelEntry {
   const model = MODELS.find((entry) => entry.id === id);
