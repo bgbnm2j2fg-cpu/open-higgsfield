@@ -37,21 +37,34 @@ export type StatusResult =
 
 export type PlatformClientOptions = {
   apiKey: string;
-  baseUrl: string;
+  /** One origin, or several to try in order: an origin that answers 401, 403
+      or 404 hands the request to the next, and the one that accepts is tried
+      first from then on. */
+  baseUrl: string | string[];
   fetch?: typeof fetch;
 };
+
+const RETRY_ON_NEXT_ORIGIN = new Set([401, 403, 404]);
+let preferredOrigin: string | null = null;
 
 export function isModelId(model: string): boolean {
   return MODEL_ID.test(model) && !model.includes("..");
 }
 
 export function createPlatformClient(options: PlatformClientOptions) {
-  const baseUrl = options.baseUrl.replace(/\/$/, "");
+  const origins = (Array.isArray(options.baseUrl) ? options.baseUrl : [options.baseUrl]).map(
+    (origin) => origin.replace(/\/$/, ""),
+  );
   const fetchImpl = options.fetch ?? fetch;
   const auth = toAuthorizationHeader(options.apiKey);
 
-  async function send(method: "GET" | "POST", path: string, body?: Record<string, unknown>) {
-    const url = `${baseUrl}${path}`;
+  async function sendTo(
+    origin: string,
+    method: "GET" | "POST",
+    path: string,
+    body?: Record<string, unknown>,
+  ) {
+    const url = `${origin}${path}`;
     console.info("[platform] request", { method, url, body: body ?? null });
     const response = await fetchImpl(url, {
       method,
@@ -66,6 +79,28 @@ export function createPlatformClient(options: PlatformClientOptions) {
     console.info("[platform] response", { method, url, status: response.status, body: payload });
     if (!response.ok) throw new PlatformError(response.status, payload);
     return payload;
+  }
+
+  async function send(method: "GET" | "POST", path: string, body?: Record<string, unknown>) {
+    const ordered =
+      preferredOrigin && origins.includes(preferredOrigin)
+        ? [preferredOrigin, ...origins.filter((origin) => origin !== preferredOrigin)]
+        : origins;
+    let lastError: unknown;
+    for (const [index, origin] of ordered.entries()) {
+      try {
+        const payload = await sendTo(origin, method, path, body);
+        if (origins.length > 1) preferredOrigin = origin;
+        return payload;
+      } catch (caught) {
+        lastError = caught;
+        const last = index === ordered.length - 1;
+        if (last || !(caught instanceof PlatformError) || !RETRY_ON_NEXT_ORIGIN.has(caught.status)) {
+          throw caught;
+        }
+      }
+    }
+    throw lastError;
   }
 
   return {
