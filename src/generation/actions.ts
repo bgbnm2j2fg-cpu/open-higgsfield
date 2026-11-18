@@ -12,8 +12,8 @@ import {
   encodeCredentials,
   parseCredentialInput,
 } from "./credentials";
-import { createPlatformClient } from "./platform";
-import type { StatusResult } from "./platform";
+import { PlatformError, createPlatformClient } from "./platform";
+import type { QueuedGeneration, StatusResult } from "./platform";
 import { toPlatform } from "./to-platform";
 
 export async function savePlatformCredentials(data: unknown) {
@@ -31,14 +31,52 @@ export async function hasPlatformCredentials() {
   return (await readStoredCredentials()) !== null;
 }
 
-export async function submitGeneration(plane: GenerationPlane) {
-  const model = getModel(plane.model);
-  const parsed: GenerationPlane = {
-    ...plane,
-    settings: parseSettings(model, plane.settings),
-  };
-  const { path, body } = toPlatform(parsed);
-  return createPlatformClient(await readCredentials()).submit(path, body);
+export type SubmitResult =
+  | { ok: true; queued: QueuedGeneration }
+  | { ok: false; error: string; missingKey?: boolean };
+
+/** Returns its failure rather than throwing it: a production build replaces a
+    thrown server-action error with a generic React digest, so the reason
+    (rejected key, no credits, wrong API origin) would never reach the page. */
+export async function submitGeneration(plane: GenerationPlane): Promise<SubmitResult> {
+  try {
+    const model = getModel(plane.model);
+    const parsed: GenerationPlane = {
+      ...plane,
+      settings: parseSettings(model, plane.settings),
+    };
+    const { path, body } = toPlatform(parsed);
+    const queued = await createPlatformClient(await readCredentials()).submit(path, body);
+    return { ok: true, queued };
+  } catch (caught) {
+    console.error("[generate] submit failed", caught instanceof Error ? caught.message : caught);
+    if (caught instanceof MissingCredentialsError) {
+      return { ok: false, error: caught.message, missingKey: true };
+    }
+    return { ok: false, error: explainFailure(caught) };
+  }
+}
+
+function explainFailure(caught: unknown): string {
+  if (caught instanceof PlatformError) {
+    const detail = caught.message;
+    if (caught.status === 401 || caught.status === 403) {
+      return `the platform rejected the key (${caught.status}: ${detail}) — check it is the right id:secret`;
+    }
+    if (caught.status === 402) return `the platform needs more credits (402: ${detail})`;
+    if (caught.status === 404) {
+      return `the platform has nothing at this address (404) — check HF_API_BASE_URL in the deployment settings`;
+    }
+    return `${detail} (${caught.status})`;
+  }
+  const message = caught instanceof Error ? caught.message : String(caught);
+  if (message === "Missing HF_API_BASE_URL") {
+    return "HF_API_BASE_URL is not set in the deployment settings";
+  }
+  if (message === "fetch failed" || message.includes("ENOTFOUND") || message.includes("ECONNREFUSED")) {
+    return "could not reach the platform at HF_API_BASE_URL — check the address in the deployment settings";
+  }
+  return message;
 }
 
 /** Every request in flight, answered in one round trip. Next dispatches server
@@ -47,13 +85,19 @@ export async function submitGeneration(plane: GenerationPlane) {
     genuinely parallel. */
 export async function getGenerationStatuses(data: unknown): Promise<StatusResult[]> {
   const requestIds = parseRequestIds(data);
-  const client = createPlatformClient(await readCredentials());
+  let client: ReturnType<typeof createPlatformClient>;
+  try {
+    client = createPlatformClient(await readCredentials());
+  } catch (caught) {
+    const error = explainFailure(caught);
+    return requestIds.map((requestId) => ({ requestId, error }));
+  }
   return Promise.all(
     requestIds.map(async (requestId): Promise<StatusResult> => {
       try {
         return { requestId, status: await client.status(requestId) };
       } catch (caught) {
-        return { requestId, error: caught instanceof Error ? caught.message : String(caught) };
+        return { requestId, error: explainFailure(caught) };
       }
     }),
   );
